@@ -40,8 +40,9 @@ jobs:
     - name: 서버연결시 지문등록
       run: ssh-keyscan -t ed25519 13.125.180.143 >> ~/.ssh/known_hosts
        
-    - name: 개인키파일확인 
-      run: |
-        cat ~/.ssh/id_rsa
-        cat ~/.ssh/known_hosts
+    # - name: 개인키파일확인 
+    #   run: |
+    #     cat ~/.ssh/id_rsa
+    #     cat ~/.ssh/known_hosts
+      
         
