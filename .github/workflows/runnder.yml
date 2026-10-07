@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: kosa-label
 
     steps:
       - name: 소스 Checkout
