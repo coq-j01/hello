@@ -1,1 +1,59 @@
-#
+name: 전자정부프레임워크 Docker 빌드 및 배포
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: 소스 Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 8 설정
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Maven 빌드
+        run: mvn clean package
+
+      - name: Docker Hub 로그인
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Docker 이미지 빌드
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/hello:latest .
+
+      - name: Docker 이미지 Push
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/hello:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+
+    steps:
+      - name: Docker Hub 로그인
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: EC2 배포
+        run: |
+          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/hello:latest
+
+          sudo docker stop hello || true
+          sudo docker rm hello || true
+
+          sudo docker run -d \
+            --name hello \
+            -p 8080:8080 \
+            --add-host=host.docker.internal:host-gateway \
+            ${{ secrets.DOCKER_USERNAME }}/hello:latest
