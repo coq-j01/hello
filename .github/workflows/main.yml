@@ -27,8 +27,17 @@ jobs:
       run: mvn clean package
 
     - name: 도커 이미지 빌드
-      run: docker build -t hello .
-
+      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/hello:latest .
+      
+    - name: Docker Hub 로그인
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Docker 이미지 Push
+      run: docker push ${{ secrets.DOCKER_USERNAME }}/hello:latest
+      
     - name: 보안환경변수를 이용하여 개인키 파일생성
       run: |
         mkdir -p ~/.ssh
@@ -39,12 +48,6 @@ jobs:
       uses: webfactory/ssh-agent@v0.5.3
       with:
         ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
-    - name: Docker Hub 로그인
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
         
     - name: 서버연결시 지문등록
       run: ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
