@@ -60,7 +60,7 @@ jobs:
 
             sudo docker run -d \
               --name hello \
-              -p 8080:8080 \
+              -p 80:8080 \
               --add-host=host.docker.internal:host-gateway \
               ${{ secrets.DOCKER_USERNAME }}/hello:latest
           EOF
