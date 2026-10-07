@@ -39,10 +39,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH Agent 설정
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+      - name: 개인키 파일 생성
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
       - name: 서버 지문 등록
         run: |
