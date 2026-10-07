@@ -7,51 +7,61 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # 어떤 운영체제 버전에서 실행하는지 설정 cancel-timeout-minutes: cancel-timeout-minutes: 
+    runs-on: ubuntu-latest
 
     steps:
-    - name: git 저장소 소스 복사전의 폴더 구조
-      run: ls -la
-    
-    - name: 소스 check out 
-      uses: actions/checkout@v3
+      - name: 소스 Checkout
+        uses: actions/checkout@v4
 
-    - name: git 저장소 소스 복사후의 폴더 구조
-      run: ls -la
+      - name: Java 8 설정
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
 
-    - name: git 저장소 소스 복사후의 hello 폴더 구조 # 리눅스 셀 명령어 2줄 이상 실행시
-      run: |   
-        ls -la
-      
-    - name: 메이븐 빌드
-      run: mvn clean package
+      - name: Maven 빌드
+        run: mvn clean package
 
-    - name: 도커 이미지 빌드
-      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/hello:latest .
-      
-    - name: Docker Hub 로그인
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        
-    - name: Docker 이미지 Push
-      run: docker push ${{ secrets.DOCKER_USERNAME }}/hello:latest
-      
-    - name: 보안환경변수를 이용하여 개인키 파일생성
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        
-    - name: actions을 사용하여 보안환경변수를 이용하여 개인키 파일생성
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-        
-    - name: 서버연결시 지문등록
-      run: ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
-       
+      - name: Docker 이미지 빌드
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/hello:latest .
+
+      - name: Docker Hub 로그인
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Docker 이미지 Push
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/hello:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH Agent 설정
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: 서버 지문 등록
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: EC2 배포
+        run: |
+          ssh ubuntu@${{ secrets.SERVER_HOST }} << 'EOF'
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/hello:latest
+
+            sudo docker stop hello || true
+            sudo docker rm hello || true
+
+            sudo docker run -d \
+              --name hello \
+              -p 8080:8080 \
+              ${{ secrets.DOCKER_USERNAME }}/hello:latest
+          EOF
     # - name: 개인키파일확인 
     #   run: |
     #     cat ~/.ssh/id_rsa
